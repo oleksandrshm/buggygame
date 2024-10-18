@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Three.js - Баггі з обертанням коліс</title>
+    <style>
+        body { margin: 0; }
+        canvas { display: block; }
+    </style>
+</head>
+<body>
+    <!-- Підключаємо Three.js, GLTFLoader і OrbitControls -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/build/three.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/examples/js/loaders/GLTFLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/examples/js/controls/OrbitControls.js"></script>
+
+    <script>
+        let scene, camera, renderer, buggy, terrain, controls, wheels = [];
+        let moveForward = false, moveBackward = false, turnLeft = false, turnRight = false;
+        let speed = 0.1;  // Початкова швидкість
+
+        // Створення сцени
+        scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x87ceeb);  // Блакитне небо
+
+        // Камера
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000); // Зменшення FOV
+        camera.position.set(0, 5, 15);  // Зміна на 15 для більшого відстані
+
+        // Рендер
+        renderer = new THREE.WebGLRenderer();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        document.body.appendChild(renderer.domElement);
+
+        // Освітлення
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);  // М'яке освітлення
+        scene.add(ambientLight);
+
+        const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+        directionalLight.position.set(10, 10, 10);
+        scene.add(directionalLight);
+
+        // Створюємо гористу місцевість
+        const terrainGeometry = new THREE.PlaneGeometry(500, 500, 64, 64);  // Плоска поверхня значно збільшена
+        const terrainMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22, wireframe: false });  // Зелений колір
+
+        const positions = terrainGeometry.attributes.position;
+        for (let i = 0; i < positions.count; i++) {
+            const z = Math.random() * 10 - 5;  // Створюємо вищі гори
+            positions.setZ(i, z);
+        }
+
+        positions.needsUpdate = true;  // Оновлюємо положення вершин
+        terrainGeometry.computeVertexNormals();  // Оновлюємо нормалі для коректного освітлення
+        terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
+        terrain.rotation.x = -Math.PI / 2;
+        terrain.position.y = -2;  // Опускаємо трохи вниз, щоб була видима площина
+        scene.add(terrain);
+
+        // Завантаження моделі баггі
+        const loader = new THREE.GLTFLoader();
+        loader.load('https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/Buggy/glTF/Buggy.gltf', function(gltf) {
+            buggy = gltf.scene;
+            buggy.scale.set(0.1, 0.1, 0.1);  // Зменшення розміру баггі
+            buggy.position.set(0, 1, 0);  // Трохи над землею
+            scene.add(buggy);
+
+            // Знаходимо колеса
+            buggy.traverse(function(node) {
+                if (node.isMesh && node.name.includes('Wheel')) {  // Зазвичай колеса містять у назві "Wheel"
+                    wheels.push(node);
+                }
+            });
+
+            // Камера буде слідкувати за баггі
+            controls = new THREE.OrbitControls(camera, renderer.domElement);
+            controls.target = buggy.position;
+            controls.update();
+        }, undefined, function(error) {
+            console.error('Помилка завантаження моделі:', error);
+        });
+
+        // Керування автомобілем
+        function handleKeyDown(event) {
+            switch (event.code) {
+                case 'ArrowUp':
+                    moveForward = true;
+                    break;
+                case 'ArrowDown':
+                    moveBackward = true;
+                    break;
+                case 'ArrowLeft':
+                    turnLeft = true;
+                    break;
+                case 'ArrowRight':
+                    turnRight = true;
+                    break;
+                case 'ShiftLeft':  // Збільшення швидкості
+                    speed += 0.05;   // Збільшити швидкість
+                    break;
+                case 'ControlLeft':  // Зменшення швидкості
+                    speed = Math.max(0.1, speed - 0.05);  // Зменшити швидкість, не менше 0.1
+                    break;
+            }
+        }
+
+        function handleKeyUp(event) {
+            switch (event.code) {
+                case 'ArrowUp':
+                    moveForward = false;
+                    break;
+                case 'ArrowDown':
+                    moveBackward = false;
+                    break;
+                case 'ArrowLeft':
+                    turnLeft = false;
+                    break;
+                case 'ArrowRight':
+                    turnRight = false;
+                    break;
+            }
+        }
+
+        window.addEventListener('keydown', handleKeyDown);
+        window.addEventListener('keyup', handleKeyUp);
+
+        // Анімаційний цикл
+        function animate() {
+            requestAnimationFrame(animate);
+
+            const turnSpeed = 0.05;
+            const wheelRotationSpeed = 0.2;  // Швидкість обертання коліс
+
+            // Рух баггі
+            if (buggy) {
+                if (moveForward) {
+                    buggy.translateZ(speed);
+
+                    // Обертання коліс при русі вперед
+                    wheels.forEach(wheel => {
+                        wheel.rotation.x -= wheelRotationSpeed;
+                    });
+                }
+
+                if (moveBackward) {
+                    buggy.translateZ(-speed);
+
+                    // Обертання коліс при русі назад
+                    wheels.forEach(wheel => {
+                        wheel.rotation.x += wheelRotationSpeed;
+                    });
+                }
+
+                if (turnLeft) {
+                    buggy.rotation.y += turnSpeed;
+                }
+
+                if (turnRight) {
+                    buggy.rotation.y -= turnSpeed;
+                }
+
+                // Камера слідкує за баггі
+                controls.target.copy(buggy.position);
+                controls.update();
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        animate();
+
+        // Оновлення розміру при зміні вікна
+        window.addEventListener('resize', () => {
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+        });
+    </script>
+</body>
+</html>
