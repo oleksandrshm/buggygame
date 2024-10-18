@@ -3,14 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Three.js - Баггі з обертанням коліс</title>
+    <title>Buggygame</title>
     <style>
         body { margin: 0; }
         canvas { display: block; }
     </style>
 </head>
 <body>
-    <!-- Підключаємо Three.js, GLTFLoader і OrbitControls -->
     <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/build/three.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/examples/js/loaders/GLTFLoader.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/three@0.138.0/examples/js/controls/OrbitControls.js"></script>
@@ -20,55 +19,50 @@
         let moveForward = false, moveBackward = false, turnLeft = false, turnRight = false;
         let speed = 0.1;  // Початкова швидкість
 
-        // Створення сцени
         scene = new THREE.Scene();
         scene.background = new THREE.Color(0x87ceeb);  // Блакитне небо
 
-        // Камера
-        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000); // Зменшення FOV
-        camera.position.set(0, 5, 15);  // Зміна на 15 для більшого відстані
+        camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000); 
+        camera.position.set(0, 5, 15);  
 
         // Рендер
         renderer = new THREE.WebGLRenderer();
         renderer.setSize(window.innerWidth, window.innerHeight);
         document.body.appendChild(renderer.domElement);
 
-        // Освітлення
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);  // М'яке освітлення
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);  
         scene.add(ambientLight);
 
         const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
         directionalLight.position.set(10, 10, 10);
         scene.add(directionalLight);
 
-        // Створюємо гористу місцевість
-        const terrainGeometry = new THREE.PlaneGeometry(500, 500, 64, 64);  // Плоска поверхня значно збільшена
-        const terrainMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22, wireframe: false });  // Зелений колір
+        const terrainGeometry = new THREE.PlaneGeometry(500, 500, 64, 64); 
+        const terrainMaterial = new THREE.MeshLambertMaterial({ color: 0x228B22, wireframe: false }); 
 
         const positions = terrainGeometry.attributes.position;
         for (let i = 0; i < positions.count; i++) {
-            const z = Math.random() * 10 - 5;  // Створюємо вищі гори
+            const z = Math.random() * 10 - 5;  
             positions.setZ(i, z);
         }
 
-        positions.needsUpdate = true;  // Оновлюємо положення вершин
-        terrainGeometry.computeVertexNormals();  // Оновлюємо нормалі для коректного освітлення
+        positions.needsUpdate = true;  
+        terrainGeometry.computeVertexNormals();  
         terrain = new THREE.Mesh(terrainGeometry, terrainMaterial);
         terrain.rotation.x = -Math.PI / 2;
-        terrain.position.y = -2;  // Опускаємо трохи вниз, щоб була видима площина
+        terrain.position.y = -2;  
         scene.add(terrain);
 
-        // Завантаження моделі баггі
         const loader = new THREE.GLTFLoader();
         loader.load('https://raw.githubusercontent.com/KhronosGroup/glTF-Sample-Models/main/2.0/Buggy/glTF/Buggy.gltf', function(gltf) {
             buggy = gltf.scene;
-            buggy.scale.set(0.1, 0.1, 0.1);  // Зменшення розміру баггі
-            buggy.position.set(0, 1, 0);  // Трохи над землею
+            buggy.scale.set(0.1, 0.1, 0.1); 
+            buggy.position.set(0, 1, 0); 
             scene.add(buggy);
 
             // Знаходимо колеса
             buggy.traverse(function(node) {
-                if (node.isMesh && node.name.includes('Wheel')) {  // Зазвичай колеса містять у назві "Wheel"
+                if (node.isMesh && node.name.includes('Wheel')) {  
                     wheels.push(node);
                 }
             });
@@ -96,11 +90,11 @@
                 case 'ArrowRight':
                     turnRight = true;
                     break;
-                case 'ShiftLeft':  // Збільшення швидкості
-                    speed += 0.05;   // Збільшити швидкість
+                case 'ShiftLeft':  
+                    speed += 0.05; 
                     break;
-                case 'ControlLeft':  // Зменшення швидкості
-                    speed = Math.max(0.1, speed - 0.05);  // Зменшити швидкість, не менше 0.1
+                case 'ControlLeft':  
+                    speed = Math.max(0.1, speed - 0.05);  
                     break;
             }
         }
@@ -130,14 +124,12 @@
             requestAnimationFrame(animate);
 
             const turnSpeed = 0.05;
-            const wheelRotationSpeed = 0.2;  // Швидкість обертання коліс
+            const wheelRotationSpeed = 0.5;  
 
-            // Рух баггі
             if (buggy) {
                 if (moveForward) {
                     buggy.translateZ(speed);
 
-                    // Обертання коліс при русі вперед
                     wheels.forEach(wheel => {
                         wheel.rotation.x -= wheelRotationSpeed;
                     });
@@ -146,7 +138,6 @@
                 if (moveBackward) {
                     buggy.translateZ(-speed);
 
-                    // Обертання коліс при русі назад
                     wheels.forEach(wheel => {
                         wheel.rotation.x += wheelRotationSpeed;
                     });
@@ -160,7 +151,6 @@
                     buggy.rotation.y -= turnSpeed;
                 }
 
-                // Камера слідкує за баггі
                 controls.target.copy(buggy.position);
                 controls.update();
             }
@@ -170,7 +160,6 @@
 
         animate();
 
-        // Оновлення розміру при зміні вікна
         window.addEventListener('resize', () => {
             renderer.setSize(window.innerWidth, window.innerHeight);
             camera.aspect = window.innerWidth / window.innerHeight;
